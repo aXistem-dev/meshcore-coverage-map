@@ -1,4 +1,4 @@
-import { ageInDays, haversineMiles, pushMap, geo } from './shared.js'
+import { ageInDays, haversineMiles, pushMap, geo, sigmoid } from './shared.js'
 
 // Global Init
 const map = L.map('map', { worldCopyJump: true }).setView([47.76837, -122.06078], 10);
@@ -104,16 +104,18 @@ function coverageMarker(hash, paths, samples) {
     if (s.path.length > 0) heard++;
     else lost++;
   });
+  const heardRatio = heard / (heard + lost);
   const date = new Date(latest.time);
+  const opacity = 0.75 * sigmoid(samples.length, 1.2, 2) * (heardRatio > 0 ? heardRatio : 1);
   const style = {
     color: color,
     weight: 1,
-    fillOpacity: .3,
+    fillOpacity: Math.max(opacity, 0.1),
   };
   const rect = L.rectangle([[minLat, minLon], [maxLat, maxLon]], style);
   const details = `
     <strong>${hash}</strong><br/>
-    Heard: ${heard} Lost: ${lost} (${(100 * heard / (heard + lost)).toFixed(0)}%)<br/>
+    Heard: ${heard} Lost: ${lost} (${(100 * heardRatio).toFixed(0)}%)<br/>
     Updated: ${date.toLocaleString()}
     ${paths.size === 0 ? '' : '<br/>Repeaters: ' + Array.from(paths).join(',')}`;
   rect.bindPopup(details, { maxWidth: 320 });

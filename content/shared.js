@@ -384,6 +384,10 @@ function pushMap(map, key, value) {
   else
     map.set(key, [value]);
 }
+function sigmoid(value, scale = 0.25, center = 0) {
+  const g = scale * (value - center);
+  return 1 / (1 + Math.exp(-g));
+}
 var export_geo = import_ngeohash.default;
 export {
   ageInDays,
@@ -391,5 +395,6 @@ export {
   haversineMiles,
   parseLocation,
   pushMap,
-  sampleKey
+  sampleKey,
+  sigmoid
 };
