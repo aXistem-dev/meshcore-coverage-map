@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: meshmap-db-prod
+    environment:
+      POSTGRES_USER: ${DB_USER:-meshmap}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-meshmap}
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-meshmap}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - meshmap-network
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: meshmap-app-prod
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-meshmap}
+      DB_USER: ${DB_USER:-meshmap}
+      DB_PASSWORD: ${DB_PASSWORD}
+      PORT: 3000
+      NODE_ENV: production
+    ports:
+      - "${PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - meshmap-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data_prod:
+
+networks:
+  meshmap-network:
+    driver: bridge
+
