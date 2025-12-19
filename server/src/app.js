@@ -12,12 +12,46 @@ const adminRoutes = require('./routes/admin');
 const app = express();
 
 // Middleware
-app.use(cors());
+// CORS configuration - allow all origins for static files and API
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Health check endpoint (before static files to ensure it's always accessible)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Handle OPTIONS requests for CORS preflight (before static files)
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.sendStatus(200);
+});
+
 // Serve static files from public directory
-app.use(express.static(path.join(__dirname, '../public')));
+// Note: CORS is already handled globally, but we ensure proper MIME types for ES modules
+app.use(express.static(path.join(__dirname, '../public'), {
+  dotfiles: 'ignore',
+  etag: true,
+  extensions: ['html', 'js', 'css', 'json', 'png', 'jpg', 'jpeg', 'gif', 'ico', 'svg'],
+  index: 'index.html',
+  maxAge: '1d',
+  setHeaders: (res, filePath) => {
+    // Set proper MIME type for ES modules (required for dynamic imports)
+    if (filePath.endsWith('.js') || filePath.endsWith('.mjs')) {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    }
+  },
+  // Don't fallthrough - let 404s be 404s
+  fallthrough: false
+}));
 
 // API routes
 app.use('/', samplesRoutes);

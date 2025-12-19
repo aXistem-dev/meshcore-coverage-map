@@ -9,7 +9,7 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD || '',
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 10000, // Increased from 2000ms to 10000ms
 });
 
 // Test the connection
