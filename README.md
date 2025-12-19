@@ -2,6 +2,8 @@
 
 This is the self-hosted version of the MeshCore Coverage Map, migrated from Cloudflare Pages/Workers to Node.js/Express with PostgreSQL.
 
+> **🚀 New to AWS EC2?** Start with [AWS_EC2_SETUP.md](AWS_EC2_SETUP.md) for initial server setup, then return here for application configuration.
+
 ## Quick Start
 
 1. **Clone the repository**
@@ -524,11 +526,13 @@ The scraper will automatically generate tokens using the `meshcore-decoder` CLI 
 
 ## AWS EC2 Deployment
 
+> **Note:** If you're starting with a fresh EC2 instance, see [AWS_EC2_SETUP.md](AWS_EC2_SETUP.md) first to install all dependencies.
+
 This section covers deploying the application on AWS EC2 with SSL certificates and production hardening.
 
 ### Prerequisites
 
-- AWS EC2 instance (Ubuntu 22.04 LTS recommended)
+- AWS EC2 instance with dependencies installed (see [AWS_EC2_SETUP.md](AWS_EC2_SETUP.md))
 - Domain name pointing to your EC2 instance's public IP
 - Security group configured to allow:
   - Port 22 (SSH)
@@ -551,16 +555,14 @@ Internet → Nginx (port 443, SSL) → Express (port 3000, HTTP internal)
 - Handles security headers, rate limiting, and logging
 - Simpler than adding multiple Express middleware packages
 
-### Step 1: Install Nginx
+### Step 1: Install Let's Encrypt Certificate
 
-```bash
-sudo apt update
-sudo apt install -y nginx
-sudo systemctl enable nginx
-sudo systemctl start nginx
-```
-
-### Step 2: Install Let's Encrypt Certificate
+> **Note:** Nginx should already be installed from [AWS_EC2_SETUP.md](AWS_EC2_SETUP.md). If not, install it first:
+> ```bash
+> sudo apt install -y nginx
+> sudo systemctl enable nginx
+> sudo systemctl start nginx
+> ```
 
 ```bash
 # Install certbot
@@ -580,7 +582,7 @@ sudo certbot --nginx -d your-domain.com -d www.your-domain.com
 sudo certbot renew --dry-run
 ```
 
-### Step 3: Configure Nginx
+### Step 2: Configure Nginx
 
 1. **Copy the configuration template:**
    ```bash
@@ -604,13 +606,15 @@ sudo certbot renew --dry-run
    sudo systemctl reload nginx
    ```
 
-### Step 4: Configure Firewall
+### Step 3: Configure Firewall
+
+> **Note:** Basic firewall setup should already be done from [AWS_EC2_SETUP.md](AWS_EC2_SETUP.md). This step ensures everything is configured correctly.
 
 ```bash
-# Install UFW (if not already installed)
-sudo apt install -y ufw
+# Verify UFW is installed (should already be done from AWS_EC2_SETUP.md)
+sudo ufw status
 
-# Allow SSH (important - do this first!)
+# If not configured, allow SSH (important - do this first!)
 sudo ufw allow 22/tcp
 
 # Allow HTTP and HTTPS
@@ -626,7 +630,7 @@ sudo ufw status
 - Inbound rules: Allow ports 22, 80, 443 from appropriate sources
 - Outbound rules: Allow all (default)
 
-### Step 5: Deploy Application
+### Step 4: Deploy Application
 
 #### Option A: With Docker (Recommended)
 
@@ -653,15 +657,12 @@ sudo ufw status
 
 #### Option B: Without Docker
 
-1. **Install Node.js and PostgreSQL:**
+1. **Verify Node.js and PostgreSQL are installed:**
    ```bash
-   # Node.js (using NodeSource)
-   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-   sudo apt install -y nodejs
-
-   # PostgreSQL
-   sudo apt install -y postgresql postgresql-contrib
+   node --version
+   psql --version
    ```
+   > **Note:** These should already be installed from [AWS_EC2_SETUP.md](AWS_EC2_SETUP.md) if you chose that option. If not, install them there first.
 
 2. **Set up database:**
    ```bash
@@ -674,7 +675,7 @@ sudo ufw status
 
 3. **Configure and run:**
    ```bash
-   cd server
+   cd ~/meshcore-coverage-map/server  # or wherever you cloned the repo
    cp .env.example .env
    nano .env  # Configure database and other settings
    npm install
@@ -690,7 +691,7 @@ sudo ufw status
    pm2 startup  # Follow instructions to enable on boot
    ```
 
-### Step 6: Verify Deployment
+### Step 5: Verify Deployment
 
 1. **Check Nginx status:**
    ```bash
