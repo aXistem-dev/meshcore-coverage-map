@@ -36,8 +36,6 @@ services:
       # All other config comes from .env file
     ports:
       - "${PORT:-3000}:3000"
-    # Note: In production, Nginx should be installed on the host and proxy to this container
-    # See AWS EC2 Deployment section in README for Nginx setup
     depends_on:
       db:
         condition: service_healthy

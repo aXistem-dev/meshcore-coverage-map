@@ -2,7 +2,7 @@
 
 Self-hosted version of the MeshCore Coverage Map, migrated from Cloudflare to Node.js/Express with PostgreSQL.
 
-## Quick Start (Docker)
+## Quick Start
 
 ```bash
 git clone <repository-url>
@@ -13,9 +13,7 @@ npm run docker:dev
 
 The application will be available at `http://localhost:3000`
 
-## Development Setup
-
-### With Docker (Recommended)
+## Development
 
 ```bash
 cd server
@@ -28,20 +26,7 @@ npm run docker:dev
 - `npm run docker:logs` - View logs
 - `npm run docker:down` - Stop containers
 
-### Without Docker
-
-```bash
-cd server
-npm install
-createdb meshmap  # Create PostgreSQL database
-npm run migrate   # Run database migrations
-cp .env.example .env
-npm run dev
-```
-
-## Production Deployment
-
-### With Docker
+## Production
 
 1. **Configure environment:**
    ```bash
@@ -50,7 +35,7 @@ npm run dev
    # Edit .env with production values
    ```
 
-2. **Stop any existing containers (if upgrading):**
+2. **Stop any existing containers:**
    ```bash
    docker-compose -f docker-compose.prod.yml down
    ```
@@ -59,147 +44,6 @@ npm run dev
    ```bash
    npm run docker:prod:detached
    ```
-
-3. **Set up Nginx and SSL** (see AWS EC2 section below)
-
-### Without Docker (Ubuntu)
-
-1. **Install dependencies:**
-   ```bash
-   # Node.js
-   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-   sudo apt install -y nodejs
-   
-   # PostgreSQL
-   sudo apt install -y postgresql postgresql-contrib
-   ```
-
-2. **Set up database:**
-   ```bash
-   sudo -u postgres psql
-   CREATE DATABASE meshmap;
-   CREATE USER meshmap WITH PASSWORD 'your_password';
-   GRANT ALL PRIVILEGES ON DATABASE meshmap TO meshmap;
-   \q
-   ```
-
-3. **Configure and run:**
-   ```bash
-   cd server
-   cp .env.example .env
-   # Edit .env with database credentials
-   npm install
-   npm run migrate
-   NODE_ENV=production npm start
-   ```
-
-4. **Use PM2 for process management:**
-   ```bash
-   sudo npm install -g pm2
-   pm2 start server.js --name mesh-map
-   pm2 save
-   pm2 startup
-   ```
-
-## AWS EC2 Deployment
-
-### Initial Server Setup
-
-1. **Connect and update:**
-   ```bash
-   ssh -i your-key.pem ubuntu@your-ec2-ip
-   sudo apt update && sudo apt upgrade -y
-   ```
-
-2. **Install Docker (for Docker deployment):**
-   ```bash
-   sudo apt install -y docker.io docker-compose
-   sudo systemctl enable docker
-   sudo systemctl start docker
-   sudo usermod -aG docker $USER
-   exit  # Reconnect for group changes
-   ```
-
-   **Or install Node.js/PostgreSQL (for vanilla deployment):**
-   ```bash
-   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-   sudo apt install -y nodejs postgresql postgresql-contrib
-   ```
-
-3. **Install Nginx and Certbot:**
-   ```bash
-   sudo apt install -y nginx certbot python3-certbot-nginx
-   ```
-
-4. **Configure firewall:**
-   ```bash
-   sudo ufw allow 22/tcp
-   sudo ufw allow 80/tcp
-   sudo ufw allow 443/tcp
-   sudo ufw enable
-   ```
-
-5. **Configure AWS Security Group:**
-   - Allow ports 22, 80, 443 from appropriate sources
-
-6. **Clone repository:**
-   ```bash
-   git clone <your-repo-url> meshcore-coverage-map
-   cd meshcore-coverage-map/server
-   ```
-
-### SSL Certificate Setup
-
-1. **Obtain certificate:**
-   ```bash
-   sudo certbot --nginx -d your-domain.com -d www.your-domain.com
-   ```
-
-2. **Configure Nginx:**
-   ```bash
-   cd ~/meshcore-coverage-map/server
-   sudo cp nginx/meshmap.conf /etc/nginx/sites-available/meshmap
-   sudo nano /etc/nginx/sites-available/meshmap
-   ```
-   
-   **Important:** Update in the config file:
-   - Change `server_name your-domain.com` to your actual domain (or `_` for any domain)
-   - Update SSL certificate paths if certbot didn't auto-configure them
-   - **For Docker deployments:** The config is already set to proxy everything to Express (static files included)
-   - **For non-Docker:** Uncomment the static file location blocks and update paths
-   
-   Then enable the site:
-   ```bash
-   # Disable default nginx site (important!)
-   sudo rm /etc/nginx/sites-enabled/default
-   
-   # Enable meshmap site
-   sudo ln -s /etc/nginx/sites-available/meshmap /etc/nginx/sites-enabled/
-   
-   # Test configuration
-   sudo nginx -t
-   
-   # Reload nginx
-   sudo systemctl reload nginx
-   ```
-
-### Deploy Application
-
-Follow the "Production Deployment" section above (Docker or vanilla), then verify:
-
-```bash
-# Check Nginx
-sudo systemctl status nginx
-
-# Check application (Docker)
-docker-compose logs -f app
-
-# Check application (PM2)
-pm2 logs mesh-map
-
-# Test HTTPS
-curl https://your-domain.com
-```
 
 ## Configuration
 
@@ -247,12 +91,6 @@ For automatic data collection from MQTT feeds:
    docker-compose logs -f mqtt-scraper
    ```
 
-3. **Or run manually:**
-   ```bash
-   pip install paho-mqtt requests haversine cryptography
-   python wardrive-mqtt.py
-   ```
-
 **Configuration example:**
 ```json
 {
@@ -292,7 +130,7 @@ Access the map and tools at:
 
 **Database connection issues:**
 ```bash
-psql -h localhost -U meshmap -d meshmap
+docker exec meshmap-db psql -U meshmap -d meshmap
 ```
 
 **Port already in use:**
@@ -301,51 +139,21 @@ Change `PORT` in `.env` or stop the process using port 3000.
 **Docker permission denied:**
 ```bash
 sudo usermod -aG docker $USER
-exit  # Reconnect via SSH
+exit  # Reconnect
 ```
 
 **Docker Compose "ContainerConfig" error:**
-This is a known issue with docker-compose 1.29.2. Fix by removing old containers first:
 ```bash
 cd server
 docker-compose -f docker-compose.prod.yml down
 docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
-**Nginx showing default welcome page:**
-1. Disable default site:
-   ```bash
-   sudo rm /etc/nginx/sites-enabled/default
-   ```
-
-2. Ensure meshmap site is enabled:
-   ```bash
-   ls -la /etc/nginx/sites-enabled/meshmap
-   # Should show a symlink to /etc/nginx/sites-available/meshmap
-   ```
-
-3. Check which site nginx is using:
-   ```bash
-   sudo nginx -T | grep "server_name"
-   ```
-
-4. Verify app is running:
-   ```bash
-   curl http://localhost:3000
-   # Should return HTML, not connection refused
-   ```
-
-5. Test and reload:
-   ```bash
-   sudo nginx -t
-   sudo systemctl reload nginx
-   ```
-
-**Nginx not working:**
+**View logs:**
 ```bash
-sudo nginx -t
-sudo systemctl status nginx
-sudo tail -f /var/log/nginx/meshmap_error.log
+docker-compose logs -f app
+docker-compose logs -f db
+docker-compose logs -f mqtt-scraper
 ```
 
 ## License
