@@ -50,7 +50,12 @@ npm run dev
    # Edit .env with production values
    ```
 
-2. **Start services:**
+2. **Stop any existing containers (if upgrading):**
+   ```bash
+   docker-compose -f docker-compose.prod.yml down
+   ```
+
+3. **Start services:**
    ```bash
    npm run docker:prod:detached
    ```
@@ -278,6 +283,14 @@ Change `PORT` in `.env` or stop the process using port 3000.
 ```bash
 sudo usermod -aG docker $USER
 exit  # Reconnect via SSH
+```
+
+**Docker Compose "ContainerConfig" error:**
+This is a known issue with docker-compose 1.29.2. Fix by removing old containers first:
+```bash
+cd server
+docker-compose -f docker-compose.prod.yml down
+docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
 **Nginx not working:**

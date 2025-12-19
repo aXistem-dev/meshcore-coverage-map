@@ -45,6 +45,20 @@ services:
       - meshmap-network
     restart: unless-stopped
 
+  mqtt-scraper:
+    build:
+      context: ../mqtt-scraper
+      dockerfile: Dockerfile
+    container_name: meshmap-mqtt-scraper-prod
+    volumes:
+      - ../mqtt-scraper/config.json:/app/config.json:ro
+    depends_on:
+      app:
+        condition: service_started
+    networks:
+      - meshmap-network
+    restart: unless-stopped
+
 volumes:
   postgres_data_prod:
 
