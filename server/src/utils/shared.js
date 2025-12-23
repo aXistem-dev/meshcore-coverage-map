@@ -167,5 +167,7 @@ module.exports = {
   definedOr,
   or,
   and,
+  getCenterPos,
+  getMaxDistanceMiles,
 };
 

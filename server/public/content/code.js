@@ -3,6 +3,7 @@ import {
   centerPos,
   geo,
   haversineMiles,
+  loadConfig,
   maxDistanceMiles,
   posFromHash,
   pushMap,
@@ -10,12 +11,9 @@ import {
   fromTruncatedTime,
 } from './shared.js'
 
-// Global Init
-const map = L.map('map', { worldCopyJump: true }).setView([37.3382, -121.8863], 10);
-const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19,
-  attribution: '© OpenStreetMap contributors | <a href="/howto" target="_blank">Contribute</a>'
-}).addTo(map);
+// Global Init - map will be initialized after config loads
+let map = null;
+let osm = null;
 
 // Control state
 let repeaterRenderMode = 'all';
@@ -29,11 +27,11 @@ let hashToCoverage = null; // Index of geohash -> coverage
 let edgeList = null; // List of connected repeater and coverage
 let individualSamples = null; // Individual (non-aggregated) samples
 
-// Map layers
-const coverageLayer = L.layerGroup().addTo(map);
-const edgeLayer = L.layerGroup().addTo(map);
-const sampleLayer = L.layerGroup().addTo(map);
-const repeaterLayer = L.layerGroup().addTo(map);
+// Map layers (will be initialized after map is created)
+let coverageLayer = null;
+let edgeLayer = null;
+let sampleLayer = null;
+let repeaterLayer = null;
 
 // Map controls (must be added first so Top Repeaters appears below)
 const mapControl = L.control({ position: 'topright' });
@@ -105,7 +103,6 @@ mapControl.onAdd = m => {
 
   return div;
 };
-mapControl.addTo(map);
 
 // Repeaters list control (top-right corner, below existing controls)
 const repeatersControl = L.control({ position: 'topright' });
@@ -159,11 +156,11 @@ repeatersControl.onAdd = m => {
     }
   });
   
-  // Close when clicking outside
+  // Close when clicking outside (use the map parameter 'm' passed to onAdd)
   const closeHandler = () => {
     list.style.display = "none";
   };
-  map.on("click", closeHandler);
+  m.on("click", closeHandler);
   
   // Prevent clicks inside the list from closing it
   list.addEventListener("click", (e) => {
@@ -175,16 +172,66 @@ repeatersControl.onAdd = m => {
   
   return div;
 };
-repeatersControl.addTo(map);
-
-// Max radius circle (only show if distance limit is enabled)
-if (maxDistanceMiles > 0) {
-  L.circle(centerPos, {
-    radius: maxDistanceMiles * 1609.34, // meters in mile
-    color: '#a13139',
-    weight: 3,
-    fill: false
+// Initialization function - loads config and sets up map
+async function initMap() {
+  // Load config from server
+  await loadConfig();
+  
+  // Initialize map with configured center position
+  map = L.map('map', { worldCopyJump: true }).setView(centerPos, 10);
+  
+  // Create and add tile layer
+  osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors | <a href="/howto" target="_blank">Contribute</a>'
   }).addTo(map);
+  
+  // Create map layers
+  coverageLayer = L.layerGroup().addTo(map);
+  edgeLayer = L.layerGroup().addTo(map);
+  sampleLayer = L.layerGroup().addTo(map);
+  repeaterLayer = L.layerGroup().addTo(map);
+  
+  // Add controls
+  mapControl.addTo(map);
+  repeatersControl.addTo(map);
+  
+  // Max radius circle (only show if distance limit is enabled)
+  if (maxDistanceMiles > 0) {
+    L.circle(centerPos, {
+      radius: maxDistanceMiles * 1609.34, // meters in mile
+      color: '#a13139',
+      weight: 3,
+      fill: false
+    }).addTo(map);
+  }
+  
+  // Load initial data
+  await refreshCoverage();
+}
+
+// Initialize on load - wait for DOM and handle errors
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    initMap().catch(err => {
+      console.error('Failed to initialize map:', err);
+      // Show error to user
+      const mapDiv = document.getElementById('map');
+      if (mapDiv) {
+        mapDiv.innerHTML = `<div style="padding: 20px; color: red;">Failed to load map: ${err.message}</div>`;
+      }
+    });
+  });
+} else {
+  // DOM is already ready
+  initMap().catch(err => {
+    console.error('Failed to initialize map:', err);
+    // Show error to user
+    const mapDiv = document.getElementById('map');
+    if (mapDiv) {
+      mapDiv.innerHTML = `<div style="padding: 20px; color: red;">Failed to load map: ${err.message}</div>`;
+    }
+  });
 }
 
 function escapeHtml(s) {

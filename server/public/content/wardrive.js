@@ -15,6 +15,7 @@ import {
   coverageKey,
   geo,
   isValidLocation,
+  loadConfig,
   maxDistanceMiles,
   sampleKey,
   posFromHash
@@ -63,25 +64,14 @@ const refreshTileAge = 1; // Tiles older than this (days) will get pinged again.
 // --- Global Init ---
 const utf8decoder = new TextDecoder(); // default 'utf-8'
 const repeatEmitter = new EventTarget();
-const map = L.map('map', {
-  worldCopyJump: true,
-  dragging: true,
-  scrollWheelZoom: true,
-  touchZoom: true,
-  boxZoom: false,
-  keyboard: false,
-  tap: false,
-  zoomControl: false,
-  doubleClickZoom: false
-}).setView(centerPos, 12);
+// Map will be initialized in onLoad after config loads
+let map = null;
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 13,
-  attribution: '© OpenStreetMap contributors'
-}).addTo(map);
-const coverageLayer = L.layerGroup().addTo(map);
-const pingLayer = L.layerGroup().addTo(map);
-const currentLocMarker = L.circleMarker([0, 0], {
+// Layers will be initialized in onLoad after map is created
+let osm = null;
+let coverageLayer = null;
+let pingLayer = null;
+let currentLocMarker = L.circleMarker([0, 0], {
   radius: 3,
   weight: 0,
   color: "red",
@@ -1027,6 +1017,36 @@ if ('bluetooth' in navigator) {
 export async function onLoad() {
   try {
     console.log('Wardrive: Starting onLoad...');
+    
+    // Load config from server first
+    await loadConfig();
+    
+    // Initialize map with configured center position
+    map = L.map('map', {
+      worldCopyJump: true,
+      dragging: true,
+      scrollWheelZoom: true,
+      touchZoom: true,
+      boxZoom: false,
+      keyboard: false,
+      tap: false,
+      zoomControl: false,
+      doubleClickZoom: false
+    }).setView(centerPos, 12);
+    
+    // Create and add tile layer
+    osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 13,
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // Create map layers
+    coverageLayer = L.layerGroup().addTo(map);
+    pingLayer = L.layerGroup().addTo(map);
+    
+    // Add current location marker to map
+    currentLocMarker.addTo(map);
+    
     loadLog();
     loadIgnoredId();
     updateLastSampleInfo();

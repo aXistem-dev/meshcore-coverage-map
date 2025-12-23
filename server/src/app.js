@@ -8,6 +8,7 @@ const repeatersRoutes = require('./routes/repeaters');
 const coverageRoutes = require('./routes/coverage');
 const nodesRoutes = require('./routes/nodes');
 const adminRoutes = require('./routes/admin');
+const configRoutes = require('./routes/config');
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use('/', repeatersRoutes);
 app.use('/', coverageRoutes);
 app.use('/', nodesRoutes);
 app.use('/', adminRoutes);
+app.use('/', configRoutes);
 
 // Handle browser requests for icons on API routes (e.g., /get-nodes.svg)
 // These are common browser behaviors and should return 404 silently

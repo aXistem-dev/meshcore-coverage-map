@@ -355,8 +355,27 @@ function haversineMiles(a, b) {
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
+// Default values (will be updated from server config)
 var centerPos = [37.3382, -121.8863];
 var maxDistanceMiles = 0;
+
+// Fetch config from server
+let configPromise = null;
+async function loadConfig() {
+  if (configPromise) return configPromise;
+  configPromise = fetch('/config')
+    .then(res => res.json())
+    .then(config => {
+      centerPos = config.centerPos || centerPos;
+      maxDistanceMiles = config.maxDistanceMiles || maxDistanceMiles;
+      return config;
+    })
+    .catch(err => {
+      console.warn('Failed to load config from server, using defaults:', err);
+      return { centerPos, maxDistanceMiles };
+    });
+  return configPromise;
+}
 function isValidLocation(p) {
   const [lat, lon] = p;
   // Only validate lat/lon bounds, not distance
@@ -442,6 +461,7 @@ export {
   export_geo as geo,
   haversineMiles,
   isValidLocation,
+  loadConfig,
   maxDistanceMiles,
   or,
   parseLocation,
